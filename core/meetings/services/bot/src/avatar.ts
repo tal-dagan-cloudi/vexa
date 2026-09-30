@@ -26,6 +26,8 @@ export async function loadAvatarDataUrl(
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
     if (!type.startsWith('image/')) throw new Error(`content-type '${type}' is not an image`);
+    const declared = Number(res.headers.get('content-length') ?? 0);
+    if (declared > MAX_AVATAR_BYTES) throw new Error(`content-length ${declared} bytes exceeds ${MAX_AVATAR_BYTES}`);
     const body = Buffer.from(await res.arrayBuffer());
     if (body.length === 0 || body.length > MAX_AVATAR_BYTES) throw new Error(`size ${body.length} bytes`);
     return `data:${type};base64,${body.toString('base64')}`;

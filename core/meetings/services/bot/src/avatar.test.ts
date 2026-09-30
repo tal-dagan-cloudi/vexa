@@ -53,12 +53,16 @@ async function unit(): Promise<string> {
     ['non-image content-type', URL_OK, stubFetch(() => new Response('<html>', { headers: { 'content-type': 'text/html' } }))],
     ['empty body', URL_OK, stubFetch(() => new Response(new Uint8Array(0), { headers: { 'content-type': 'image/png' } }))],
     ['oversize body', URL_OK, stubFetch(() => new Response(new Uint8Array(2 * 1024 * 1024), { headers: { 'content-type': 'image/png' } }))],
+    ['oversize Content-Length (rejected before reading)', URL_OK, stubFetch(() => new Response(new ReadableStream({ pull() { throw new Error('body was read'); } }), { headers: { 'content-type': 'image/png', 'content-length': String(5 * 1024 * 1024) } }))],
     ['network error', URL_OK, stubFetch(() => { throw new Error('ECONNREFUSED'); })],
     ['non-http scheme', 'file:///etc/passwd', stubFetch(() => new Response(SVG))],
   ];
   for (const [name, url, s] of fails) {
     const before = warnings.length;
     check(`${name} → null (camera-off fallback) with a warning`, await loadAvatarDataUrl(url, s.f, warn) === null && warnings.length === before + 1, JSON.stringify(warnings.slice(before)));
+    if (name.startsWith('oversize Content-Length')) {
+      check('oversize Content-Length never buffers the body', !warnings[before].includes('body was read'), warnings[before]);
+    }
   }
 
   const inv = parseInvocation(JSON.stringify({
