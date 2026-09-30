@@ -203,10 +203,10 @@ export class TranscriptionClient {
       ));
     }
 
-    // Request word-level timestamps
+    // Request word-level timestamps. Array form ([]) is what the OpenAI SDK sends; Groq rejects the bare name.
     parts.push(Buffer.from(
       `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="timestamp_granularities"\r\n\r\n` +
+      `Content-Disposition: form-data; name="timestamp_granularities[]"\r\n\r\n` +
       `word\r\n`
     ));
 
