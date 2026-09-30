@@ -187,6 +187,7 @@ meetingApi:
   image:
     repository: vexaai/v012-meeting-api
     tag: v012
+    tagOverride: ""        # wins over global.imageTag (a patched build in another repo)
   service:
     type: ClusterIP
     port: 8080
