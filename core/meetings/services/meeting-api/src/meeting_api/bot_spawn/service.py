@@ -773,6 +773,7 @@ async def request_bot(
         s3_bucket=auth_s3.get("s3_bucket"),
         s3_access_key=auth_s3.get("s3_access_key"),
         s3_secret_key=auth_s3.get("s3_secret_key"),
+        default_avatar_url=os.getenv("BOT_DEFAULT_AVATAR_URL") or None,
         # Explicit caller windows win; otherwise omit everyoneLeftTimeout so the bot's
         # silence-window module default applies (the lobby window stays forgiving for
         # human-in-the-loop dashboard joins).
