@@ -2,9 +2,15 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
 
 from meeting_api.bot_spawn import request_bot
 from meeting_api.bot_spawn.fakes import FakeRuntimeClient, InMemoryMeetingRepo
+from meeting_api.bot_spawn.service import _AJV_URI
 
 AVATAR = "https://meet.cloudi.cloud/brand/notetaker-avatar.png"
 
@@ -38,8 +44,33 @@ async def test_unset_avatar_omitted(monkeypatch):
 
 async def test_malformed_avatar_omitted(monkeypatch):
     # The bot's ajv (format: uri) would reject these and fail EVERY bot at boot — omit them instead.
-    for bad in ("meet.cloudi.cloud/x.png", "https://a b/c.png", "ftp://meet.cloudi.cloud/x.png", "https:///x.png", "https://meet.cloudi.cloud/<x>.png"):
+    for bad in ("meet.cloudi.cloud/x.png", "https://a b/c.png", "ftp://meet.cloudi.cloud/x.png", "https:///x.png", "https://meet.cloudi.cloud/<x>.png",
+                "https://h.com/a%zz.png", "https://h.com/a%2.png", "https://h.com/[x].png",
+                "https://h.com/x.png?a=[1]", "https://h.com/a#b#c", "https://h.com/x.png\n"):
         assert "defaultAvatarUrl" not in await _spawned_invocation(monkeypatch, bad), bad
     # a normal URL with query/percent-escapes still passes
     ok = "https://meet.cloudi.cloud/brand/notetaker%20avatar.png?v=2"
     assert (await _spawned_invocation(monkeypatch, ok))["defaultAvatarUrl"] == ok
+
+
+PARITY_CASES = [
+    AVATAR, "https://meet.cloudi.cloud/brand/notetaker%20avatar.png?v=2", "http://10.0.0.1:8080/a.png",
+    "https://[::1]/a.png", "https://h.com/a#frag", "https://user:pw@h.com/a.png", "https://h.com",
+    "meet.cloudi.cloud/x.png", "https://a b/c.png", "https:///x.png", "https://meet.cloudi.cloud/<x>.png",
+    "https://h.com/a%zz.png", "https://h.com/a%2.png", "https://h.com/[x].png", "https://h.com/x.png?a=[1]",
+    "https://h.com/a#b#c", "https://h.com/x.png\n", "ftp://h.com/x", "https://h.com/é.png", 'https://h.com/"x".png',
+]
+_AJV_FORMATS = Path(__file__).resolve().parents[2] / "bot" / "node_modules" / "ajv-formats"
+
+
+@pytest.mark.skipif(not (shutil.which("node") and _AJV_FORMATS.is_dir()),
+                    reason="node or the bot's ajv-formats not installed (pnpm install)")
+def test_ported_uri_regex_matches_ajv_formats():
+    # The Python regex is a verbatim port; this pins it to the bot's real validator on shared cases.
+    script = ("const f=require(process.argv[1]).fullFormats.uri;"
+              "process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map((u)=>f(u))))")
+    out = subprocess.run(["node", "-e", script, str(_AJV_FORMATS / "dist" / "formats.js"), json.dumps(PARITY_CASES)],
+                         capture_output=True, text=True, check=True).stdout
+    ajv = json.loads(out)
+    assert [bool(_AJV_URI.fullmatch(u)) for u in PARITY_CASES] == ajv
+

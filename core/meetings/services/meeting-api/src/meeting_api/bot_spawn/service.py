@@ -402,6 +402,14 @@ async def _terminalize_as_stopped(
                   span="bots.create", meeting_id=str(meeting_id), fields={"error": str(e)})
 
 
+# cloudi: ajv-formats' full-mode ``uri`` regex (ajv-formats 3.x dist/formats.js ``URI``), verbatim — the
+# exact check the bot's invocation parser applies to defaultAvatarUrl. Parity with the JS original is
+# pinned by tests/test_default_avatar_spawn.py.
+_AJV_URI = re.compile(
+    r"""^(?:[a-z][a-z0-9+\-.]*:)(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)(?:\?(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$""",
+    re.IGNORECASE | re.ASCII,
+)
+
 def _default_avatar_url(user_id: Any) -> Optional[str]:
     """cloudi: BOT_DEFAULT_AVATAR_URL, only when it is an absolute http(s) URL. The bot's invocation
     parser checks ``format: uri`` and refuses a malformed value at boot, so one bad env value would
@@ -410,7 +418,7 @@ def _default_avatar_url(user_id: Any) -> Optional[str]:
     if not value:
         return None
     parsed = urlparse(value)
-    if parsed.scheme in ("http", "https") and parsed.netloc and re.fullmatch(r"[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+", value):
+    if parsed.scheme in ("http", "https") and parsed.netloc and _AJV_URI.fullmatch(value):
         return value
     log_event("bot_spawn_avatar_url_invalid", audience="system", level="warning",
               span="bots.create", user_id=user_id,
