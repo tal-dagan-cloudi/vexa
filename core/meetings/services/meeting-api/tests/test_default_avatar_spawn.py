@@ -34,3 +34,12 @@ async def test_env_avatar_copied_into_invocation(monkeypatch):
 async def test_unset_avatar_omitted(monkeypatch):
     assert "defaultAvatarUrl" not in await _spawned_invocation(monkeypatch, None)
     assert "defaultAvatarUrl" not in await _spawned_invocation(monkeypatch, "")
+
+
+async def test_malformed_avatar_omitted(monkeypatch):
+    # The bot's ajv (format: uri) would reject these and fail EVERY bot at boot — omit them instead.
+    for bad in ("meet.cloudi.cloud/x.png", "https://a b/c.png", "ftp://meet.cloudi.cloud/x.png", "https:///x.png", "https://meet.cloudi.cloud/<x>.png"):
+        assert "defaultAvatarUrl" not in await _spawned_invocation(monkeypatch, bad), bad
+    # a normal URL with query/percent-escapes still passes
+    ok = "https://meet.cloudi.cloud/brand/notetaker%20avatar.png?v=2"
+    assert (await _spawned_invocation(monkeypatch, ok))["defaultAvatarUrl"] == ok

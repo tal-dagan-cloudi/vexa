@@ -402,6 +402,22 @@ async def _terminalize_as_stopped(
                   span="bots.create", meeting_id=str(meeting_id), fields={"error": str(e)})
 
 
+def _default_avatar_url(user_id: Any) -> Optional[str]:
+    """cloudi: BOT_DEFAULT_AVATAR_URL, only when it is an absolute http(s) URL. The bot's invocation
+    parser checks ``format: uri`` and refuses a malformed value at boot, so one bad env value would
+    fail every bot — a bad value is dropped (bot joins camera-off) and warned about instead."""
+    value = os.getenv("BOT_DEFAULT_AVATAR_URL") or ""
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme in ("http", "https") and parsed.netloc and re.fullmatch(r"[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+", value):
+        return value
+    log_event("bot_spawn_avatar_url_invalid", audience="system", level="warning",
+              span="bots.create", user_id=user_id,
+              fields={"reason": "BOT_DEFAULT_AVATAR_URL is not an absolute http(s) URL; omitted"})
+    return None
+
+
 async def request_bot(
     repo: MeetingRepo,
     runtime: RuntimeClient,
@@ -773,7 +789,7 @@ async def request_bot(
         s3_bucket=auth_s3.get("s3_bucket"),
         s3_access_key=auth_s3.get("s3_access_key"),
         s3_secret_key=auth_s3.get("s3_secret_key"),
-        default_avatar_url=os.getenv("BOT_DEFAULT_AVATAR_URL") or None,
+        default_avatar_url=_default_avatar_url(user_id),
         # Explicit caller windows win; otherwise omit everyoneLeftTimeout so the bot's
         # silence-window module default applies (the lobby window stays forgiving for
         # human-in-the-loop dashboard joins).
