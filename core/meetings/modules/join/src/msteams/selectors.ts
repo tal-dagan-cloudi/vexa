@@ -179,6 +179,14 @@ export const teamsCameraButtonSelectors: string[] = [
   'button[aria-label*="Turn video on"]'
 ];
 
+// cloudi: the pre-join toggle while the camera is OFF (avatar bots click it to turn the camera on).
+export const teamsCameraOnSelectors: string[] = [
+  'button[aria-label*="Turn on camera"]',
+  'button[aria-label*="Turn camera on"]',
+  'button[aria-label*="Turn on video"]',
+  'button[aria-label*="Turn video on"]'
+];
+
 export const teamsVideoOptionsButtonSelectors: string[] = [
   'button[aria-label*="Open video options"]',
   'button[aria-label*="open video options"]',

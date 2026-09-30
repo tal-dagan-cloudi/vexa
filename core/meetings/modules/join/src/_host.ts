@@ -17,6 +17,8 @@ export interface BotConfig {
   /** meeting passcode (zoom passcode screen / jitsi room password) */
   passcode?: string;
   authenticated?: boolean;
+  /** cloudi: the embedder installed a virtual camera (static avatar) — leave the camera ON. */
+  cameraOn?: boolean;
   uiInteractionMode?: "humanized" | "synthetic";
   automaticLeave?: {
     waitingRoomTimeout: number;

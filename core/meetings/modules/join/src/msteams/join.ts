@@ -6,6 +6,7 @@ import {
   teamsContinueWithoutMediaSelectors,
   teamsJoinButtonSelectors,
   teamsCameraButtonSelectors,
+  teamsCameraOnSelectors,
   teamsVideoOptionsButtonSelectors,
   teamsNameInputSelectors,
   teamsComputerAudioRadioSelectors,
@@ -202,14 +203,26 @@ export async function joinMicrosoftTeams(
   // We must configure all of these before clicking "Join now" in Step 6.
 
   log("Step 3: Camera handling...");
-  // Turn camera off to be unobtrusive
-  try {
-    const cameraButton = page.locator(teamsCameraButtonSelectors[0]);
-    await cameraButton.waitFor({ timeout: 5000 });
-    await cameraButton.click();
-    log("✅ Camera turned off");
-  } catch (error) {
-    log("ℹ️ Camera button not found or already off");
+  if (botConfig.cameraOn) {
+    // cloudi: avatar bot — keep the camera on; click the toggle only if it shows the camera off.
+    try {
+      const cameraOnButton = page.locator(teamsCameraOnSelectors.join(", ")).first();
+      await cameraOnButton.waitFor({ timeout: 5000 });
+      await cameraOnButton.click();
+      log("✅ Camera turned on (avatar)");
+    } catch (error) {
+      log("ℹ️ Camera already on or toggle not found (avatar)");
+    }
+  } else {
+    // Turn camera off to be unobtrusive
+    try {
+      const cameraButton = page.locator(teamsCameraButtonSelectors[0]);
+      await cameraButton.waitFor({ timeout: 5000 });
+      await cameraButton.click();
+      log("✅ Camera turned off");
+    } catch (error) {
+      log("ℹ️ Camera button not found or already off");
+    }
   }
 
   log("Step 4: Trying to set display name...");

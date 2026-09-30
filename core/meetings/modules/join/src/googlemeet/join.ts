@@ -6,6 +6,7 @@ import {
   googleJoinButtonSelectors,
   googleMicrophoneButtonSelectors,
   googleCameraButtonSelectors,
+  googleCameraOnSelectors,
   googleAuthJoinCtaSelectors,
   googleSignedOutLobbyProbeSelectors,
   googleLobbyIconGlyphSelectors,
@@ -388,6 +389,18 @@ export async function joinGoogleMeeting(
     await page.fill(selector, text);
   };
 
+  // cloudi: avatar bots keep the camera on — click "Turn on camera" only if the lobby shows it off.
+  const turnCameraOn = async (timeout: number): Promise<void> => {
+    try {
+      const cameraHandle = await page.waitForSelector(googleCameraOnSelectors[0], { timeout });
+      // Re-read the label: the camera may have come on by itself since the wait resolved.
+      const label = cameraHandle && await cameraHandle.getAttribute("aria-label");
+      if (cameraHandle && label?.includes("Turn on camera")) { await clickHandle(cameraHandle, "camera"); log("Camera turned on (avatar)."); }
+    } catch (e) {
+      log("Camera already on or not found (avatar).");
+    }
+  };
+
   if (botConfig.authenticated) {
     // Authenticated flow: browser is logged into Google, skip name input
     log("Authenticated mode: skipping name input (using Google account identity)");
@@ -408,11 +421,15 @@ export async function joinGoogleMeeting(
       log("Microphone already muted or not found.");
     }
 
-    try {
-      const cameraHandle = await page.waitForSelector(googleCameraButtonSelectors[0], { timeout: 3000 });
-      if (cameraHandle) { await clickHandle(cameraHandle, "camera"); log("Camera turned off."); }
-    } catch (e) {
-      log("Camera already off or not found.");
+    if (botConfig.cameraOn) {
+      await turnCameraOn(3000);
+    } else {
+      try {
+        const cameraHandle = await page.waitForSelector(googleCameraButtonSelectors[0], { timeout: 3000 });
+        if (cameraHandle) { await clickHandle(cameraHandle, "camera"); log("Camera turned off."); }
+      } catch (e) {
+        log("Camera already off or not found.");
+      }
     }
 
     // Authenticated lobby: one primary CTA — "Join now" (standard join),
@@ -471,11 +488,15 @@ export async function joinGoogleMeeting(
       log("Microphone already muted or not found.");
     }
 
-    try {
-      const cameraHandle = await page.waitForSelector(googleCameraButtonSelectors[0], { timeout: 1000 });
-      if (cameraHandle) await clickHandle(cameraHandle, "camera");
-    } catch (e) {
-      log("Camera already off or not found.");
+    if (botConfig.cameraOn) {
+      await turnCameraOn(1000);
+    } else {
+      try {
+        const cameraHandle = await page.waitForSelector(googleCameraButtonSelectors[0], { timeout: 1000 });
+        if (cameraHandle) await clickHandle(cameraHandle, "camera");
+      } catch (e) {
+        log("Camera already off or not found.");
+      }
     }
 
     const { handle: joinHandle } = await waitForLobbyCta(

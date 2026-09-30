@@ -338,6 +338,11 @@ export const googleCameraButtonSelectors: string[] = [
   'button[aria-label*="Turn on camera"]'
 ];
 
+// cloudi: the lobby toggle while the camera is OFF (avatar bots click it to turn the camera on).
+export const googleCameraOnSelectors: string[] = [
+  '[aria-label*="Turn on camera"]'
+];
+
 export const googleMicrophoneButtonSelectors: string[] = [
   '[aria-label*="Turn off microphone"]',
   'button[aria-label*="Turn off microphone"]',

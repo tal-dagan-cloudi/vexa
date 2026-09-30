@@ -349,7 +349,13 @@ export async function joinZoomMeeting(
     const videoBtn = page.locator(zoomPreviewVideoSelector);
     const videoAriaLabel = await videoBtn.getAttribute('aria-label');
     // "Stop Video" means video is on → click to stop. "Start Video" means already off → skip.
-    if (videoAriaLabel === 'Stop Video') {
+    // cloudi: an avatar bot (cameraOn) does the reverse — click "Start Video", never "Stop Video".
+    if (botConfig.cameraOn) {
+      if (videoAriaLabel === 'Start Video') {
+        await videoBtn.click();
+        log('[Zoom Web] Started video in preview (avatar)');
+      }
+    } else if (videoAriaLabel === 'Stop Video') {
       await videoBtn.click();
       log('[Zoom Web] Stopped video in preview');
     }

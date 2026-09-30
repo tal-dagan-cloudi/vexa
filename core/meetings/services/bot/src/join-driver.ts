@@ -121,6 +121,7 @@ export function createBrowserJoinDriver(
           botName: inv.botName,
           passcode: inv.passcode,                      // zoom passcode screen / jitsi room password
           authenticated: inv.authenticated,            // join as a signed-in user (persistent context)
+          cameraOn: inv.cameraEnabled,                 // cloudi: avatar camera installed → keep it on
           waitingRoomTimeoutMs: inv.automaticLeave?.waitingRoomTimeout,
           hooks: {
             onState: (s: JoinState) => {

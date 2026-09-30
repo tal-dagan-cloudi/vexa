@@ -38,6 +38,7 @@ import {
 import { getJoinBrowserArgs } from '@vexa/join';
 import type { RecordingMasterFormat } from '@vexa/recording';
 import { isMixedLanePlatform, isPerTrackLanePlatform, type Invocation } from './config.js';
+import { avatarCameraInitScript, loadAvatarDataUrl } from './avatar.js';
 import type { BotPipeline } from './pipeline.js';
 import type { BotRecordingSink } from './recording.js';
 import type { TelemetrySink } from './ports.js';
@@ -559,6 +560,8 @@ const BROWSER_UTILS_PATH = process.env.VEXA_BROWSER_UTILS_PATH ?? '/app/browser-
 export interface BrowserSession {
   context: BrowserContext;
   page: Page;
+  /** cloudi: the avatar camera is installed — the join keeps the camera on. */
+  cameraOn: boolean;
   close(): Promise<void>;
 }
 
@@ -594,6 +597,13 @@ export async function launchBrowser(inv: Invocation): Promise<BrowserSession> {
   // join args win on conflict (later wins in Chromium arg parsing).
   const args = [...getAuthenticatedBrowserArgs(), ...getJoinBrowserArgs()];
   const { context, page } = await launchPersistentBrowser({ dataDir, args });
+
+  // cloudi: static avatar as the camera (invocation.v1 defaultAvatarUrl). Installed before the
+  // join navigates; any failure leaves the bot camera-off exactly as without an avatar.
+  const avatar = await loadAvatarDataUrl(inv.defaultAvatarUrl);
+  const cameraOn = !!avatar && await context.addInitScript(avatarCameraInitScript(avatar))
+    .then(() => true, (e) => { console.warn(`[bot] avatar: init script failed (${String(e)}) — joining camera-off`); return false; });
+  if (cameraOn) console.log('[bot] avatar: camera installed');
 
   // Voice-agent gate the page reads to decide whether to keep the mic hot (production parity).
   await context.addInitScript(`window.__vexa_voice_agent_enabled = ${!!inv.voiceAgentEnabled};`);
@@ -656,6 +666,7 @@ export async function launchBrowser(inv: Invocation): Promise<BrowserSession> {
   return {
     context,
     page,
+    cameraOn,
     async close() {
       await context.close().catch(() => { /* best-effort */ });
       // Write-back on clean teardown (#725): Google rotates session cookies during use, so the

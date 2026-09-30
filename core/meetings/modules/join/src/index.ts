@@ -52,6 +52,9 @@ export interface JoinOptions {
   /** join as a signed-in user — caller hands in a persistent, logged-in context
    *  (e.g. from @vexa/remote-browser); the brick skips guest name-entry. */
   authenticated?: boolean;
+  /** cloudi: the embedder installed a virtual camera (static avatar) — the join turns the
+   *  camera ON instead of off. Default: off, as upstream. */
+  cameraOn?: boolean;
   waitingRoomTimeoutMs?: number;
   /** turn on the live debug view (VNC pixels on Linux, CDP control anywhere) */
   debug?: boolean;
@@ -93,6 +96,7 @@ export async function joinMeeting(page: Page, opts: JoinOptions): Promise<JoinRe
     botName: opts.botName ?? defaultBotName(),
     passcode: opts.passcode,
     authenticated: opts.authenticated,
+    cameraOn: opts.cameraOn,
     uiInteractionMode: opts.uiInteractionMode,
     automaticLeave: { waitingRoomTimeout: opts.waitingRoomTimeoutMs ?? 180_000 },
   };
