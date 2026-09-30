@@ -469,6 +469,41 @@ def test_probe_sends_real_audio_so_a_metered_backend_can_price_it():
     assert len(bodies) == 1 and b"RIFF" in bodies[0] and b"probe.wav" in bodies[0]
 
 
+def test_probe_sends_the_served_model_and_a_non_default_user_agent():
+    """Groq sits behind Cloudflare, which answers the default Python-urllib agent 403 (error 1010),
+    and 404s whisper-1 because it serves whisper-large-v3. Either one read as a config fault and
+    refused every POST /bots against a backend that worked."""
+    seen: list = []
+
+    import http.server
+    import threading
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802
+            seen.append((self.headers.get("User-Agent") or "",
+                         self.rfile.read(int(self.headers.get("Content-Length") or 0))))
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        env = {"TRANSCRIPTION_SERVICE_URL": f"http://127.0.0.1:{server.server_address[1]}",
+               "TRANSCRIPTION_SERVICE_TOKEN": "t", "TRANSCRIPTION_MODEL": "whisper-large-v3"}
+        assert cp._http_probe(_stt_probe_spec()["http"], env, timeout=10)["ok"] is True
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    agent, body = seen[0]
+    assert not agent.startswith("Python-urllib")
+    assert b"whisper-large-v3" in body and b"whisper-1" not in body
+
+
 def test_probe_declares_a_long_ttl_because_the_round_trip_is_metered():
     probe = _stt_probe_spec()
     assert float(probe.get("ttl_s") or 0) >= 600, (

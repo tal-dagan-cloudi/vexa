@@ -229,8 +229,12 @@ def _http_probe(spec: dict, env: Mapping[str, str], timeout: float) -> dict:
     body = b""
     content_type = None
     if (spec.get("payload") or "") == "audio":
-        content_type, body = audio_probe_body(spec.get("payload_model") or "whisper-1")
+        # The served model id, not whisper-1: Groq and other non-OpenAI backends 404 an unknown model.
+        content_type, body = audio_probe_body(
+            spec.get("payload_model") or env.get("TRANSCRIPTION_MODEL") or "whisper-1")
     req = urllib.request.Request(url, data=body, method=(spec.get("method") or "POST"))
+    # Cloudflare-fronted backends (Groq) answer the default Python-urllib agent with 403 (error 1010).
+    req.add_header("User-Agent", "vexa-config-preflight")
     if content_type:
         req.add_header("Content-Type", content_type)
     token = (env.get(spec["auth_key"]) or "").strip() if spec.get("auth_key") else ""
